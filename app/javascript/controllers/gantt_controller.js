@@ -199,11 +199,30 @@ export default class extends Controller {
     // target/outlet relationship — see TASK-051.
     this.boundHandleItemSaved = (event) => this.handleItemSaved(event)
     window.addEventListener("gantt:item-saved", this.boundHandleItemSaved)
+
+    // A morph keeps this element (so `connect()` doesn't run again) but
+    // replaces its children with what the server rendered — and the server
+    // renders the chart and toolbar empty, because both are built here in
+    // JS. When the morph also changed one of our values, the matching
+    // *ValueChanged callback re-renders and all is well; when it didn't
+    // (saving a project's description, saving Teams with nothing edited),
+    // nothing fires and the user is left staring at a blank page until they
+    // reload. Re-render on the next frame if we've been emptied — deferred
+    // so a *ValueChanged re-render, which runs first, wins and this becomes
+    // a no-op rather than a second redundant render.
+    this.boundHandleMorph = () => {
+      requestAnimationFrame(() => {
+        if (!this.element.isConnected) return
+        if (this.hasChartTarget && this.chartTarget.childElementCount === 0) this.refresh()
+      })
+    }
+    document.addEventListener("turbo:morph", this.boundHandleMorph)
   }
 
   disconnect() {
     this.chartTarget.removeEventListener("scroll", this.boundSchedulePersistCenterDate)
     window.removeEventListener("gantt:item-saved", this.boundHandleItemSaved)
+    document.removeEventListener("turbo:morph", this.boundHandleMorph)
     clearTimeout(this.persistCenterDateTimer)
   }
 
@@ -382,6 +401,7 @@ export default class extends Controller {
       button.type = "button"
       button.textContent = scale.label
       button.dataset.scale = scale.key
+      if (scale.key === this.scale) button.setAttribute("aria-current", "true")
       button.addEventListener("click", () => {
         if (this.scale === scale.key) return
         // Keep whatever the user is looking at in view across a zoom change.
@@ -410,6 +430,9 @@ export default class extends Controller {
       : "text-xs px-3 py-1.5 mr-2 rounded border bg-white text-gray-600 border-gray-300 hover:bg-gray-50")
     button.type = "button"
     button.textContent = label
+    // These read as plain buttons to a screen reader without this — the
+    // on/off state is otherwise carried only by background color.
+    button.setAttribute("aria-pressed", String(Boolean(isVisible)))
     button.title = isVisible ? `Hide ${label.toLowerCase()}` : `Show ${label.toLowerCase()}`
     button.addEventListener("click", onToggle)
     return button

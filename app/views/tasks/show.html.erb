@@ -4,16 +4,16 @@
     <p class="text-xs text-gray-500"><%= @task.project.name %></p>
     <p data-item-form-target="error" class="<%= ds_alert(:error) %>" hidden></p>
 
-    <% if @task.verified? %>
-      <p class="text-xs text-gray-400">Verified — title and dates are locked. Un-check "Verified" below to edit them.</p>
-    <% end %>
+    <p data-item-form-target="lockNotice" class="text-xs text-gray-400" <%= "hidden" unless @task.verified? %>>
+      Verified — title and dates are locked. Un-check "Verified" below to edit them.
+    </p>
 
     <%= form_with model: [ @task.project, @task ], data: { action: "submit->item-form#save" }, class: "space-y-2" do |f| %>
-      <%= f.text_field :name, required: true, disabled: @task.verified?, class: ds_field %>
+      <%= f.text_field :name, required: true, disabled: @task.verified?, class: ds_field, data: { item_form_target: "lockable" } %>
       <%= render "team_picker", f: f, teams: @teams %>
       <%= render "sprint_picker", f: f, sprints: @sprints, locked: @task.verified? %>
       <label class="flex items-center gap-1.5 text-xs text-gray-600">
-        <%= f.check_box :verified %> Verified
+        <%= f.check_box :verified, data: { action: "change->item-form#toggleLock" } %> Verified
       </label>
       <%= f.text_area :notes, placeholder: "Notes (optional)", rows: 3, class: ds_field %>
       <%= f.submit "Save", class: "w-full #{ds_button(:primary)}" %>

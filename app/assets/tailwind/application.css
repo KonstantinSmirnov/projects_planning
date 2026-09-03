@@ -36,6 +36,22 @@
     box-shadow: 0 0 0 3px color-mix(in oklab, var(--color-indigo-500) 20%, transparent);
   }
 
+  /*
+   * Without this, a locked (verified) name/date field looks exactly like an
+   * editable one: the white background above beats the browser's default
+   * disabled appearance, so the only cue was the explanatory notice. The
+   * selector repeats the whole :not() chain deliberately — a plain
+   * `input:disabled` loses to the rule above it on specificity.
+   */
+  input:not([type="checkbox"]):not([type="radio"]):not([type="submit"]):not([type="button"]):not([type="file"]):not([type="color"]):disabled,
+  select:disabled,
+  textarea:disabled {
+    background-color: var(--color-gray-100);
+    color: var(--color-gray-500);
+    border-color: var(--color-gray-200);
+    cursor: not-allowed;
+  }
+
   input[type="checkbox"],
   input[type="radio"] {
     width: 1rem;

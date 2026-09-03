@@ -11,7 +11,17 @@ import { Controller } from "@hotwired/stimulus"
 // target/outlet relationship available — a `window` CustomEvent is how this
 // reaches back to it instead (see gantt_controller.js#handleItemSaved).
 export default class extends Controller {
-  static targets = [ "error" ]
+  static targets = [ "error", "lockable", "lockNotice" ]
+
+  // Verified locks an item's title and dates. Un-checking the box re-enables
+  // them straight away, so "un-verify it and fix the date" is one save rather
+  // than save, reopen, edit, save again — which is what it used to take,
+  // since the fields were only re-rendered as editable on the next load.
+  toggleLock(event) {
+    const locked = event.target.checked
+    this.lockableTargets.forEach((field) => { field.disabled = locked })
+    if (this.hasLockNoticeTarget) this.lockNoticeTarget.hidden = !locked
+  }
 
   save(event) {
     event.preventDefault()
