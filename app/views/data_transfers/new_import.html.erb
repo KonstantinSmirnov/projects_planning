@@ -1,0 +1,19 @@
+<%= turbo_frame_tag "modal_body" do %>
+  <div class="p-4 space-y-4">
+    <%= render "shared/modal_header", title: "Import data" %>
+
+    <p class="<%= ds_alert(:error) %>">
+      Importing replaces ALL current projects, milestones, tasks, and sprints with the contents of the file. This cannot be undone.
+      <%= link_to "Export a backup first", export_data_path, class: "underline" %> if you want to keep what's here now.
+    </p>
+
+    <%= form_with url: data_import_path, method: :post, data: { turbo_frame: "_top", turbo_confirm: "This permanently replaces all current data with the contents of the file. Continue?" }, multipart: true, class: "space-y-3" do %>
+      <input type="file" name="file" accept="application/json" required>
+      <label class="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox" name="confirmed" value="1" required>
+        I understand this replaces all existing data
+      </label>
+      <button type="submit" class="w-full <%= ds_button(:danger) %>">Import</button>
+    <% end %>
+  </div>
+<% end %>

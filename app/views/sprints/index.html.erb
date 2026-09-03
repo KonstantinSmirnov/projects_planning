@@ -1,0 +1,75 @@
+<%= turbo_frame_tag "modal_body" do %>
+  <div class="p-4 space-y-4">
+    <%= render "shared/modal_header", title: "Sprints configuration" %>
+
+    <% if flash[:alert] %>
+      <p class="<%= ds_alert(:error) %>"><%= flash[:alert] %></p>
+    <% end %>
+    <% if flash[:notice] %>
+      <p class="<%= ds_alert(:success) %>"><%= flash[:notice] %></p>
+    <% end %>
+
+    <p class="text-xs text-gray-500">
+      <%= pluralize(@sprints.size, "sprint") %>.
+      Edit as many rows as you like, then press "Save changes" once at the bottom to apply everything together.
+      The first sprint's number is editable — change it and every sprint after it is renumbered incrementally.
+      Only the first and last sprint can be deleted, so numbering never gets gaps.
+    </p>
+
+    <%# The save form is empty and lives right here purely for its opening/closing %>
+    <%# tag and hidden CSRF/method fields — every row's inputs below reference it %>
+    <%# by id via the HTML `form` attribute instead of nesting inside it, so the %>
+    <%# per-row Delete button (itself a `<form>`) never ends up nested inside %>
+    <%# another form, which browsers don't support and silently mangle. %>
+    <%= form_with url: sprints_path, method: :patch, id: "sprints_save_form" do %><% end %>
+
+    <div class="border border-gray-200 rounded overflow-hidden">
+      <div class="grid grid-cols-[5.5rem_1fr_1fr_auto_auto] gap-x-2 items-center bg-gray-50 border-b border-gray-200 px-3 py-2 text-xs uppercase tracking-wide text-gray-500">
+        <span>#</span>
+        <span>Start date</span>
+        <span>End date</span>
+        <span>Release</span>
+        <span class="sr-only">Delete</span>
+      </div>
+
+      <div class="max-h-[50vh] overflow-y-auto divide-y divide-gray-100">
+        <% @sprints.each do |sprint| %>
+          <% current = @current_sprint_number == sprint.number %>
+          <div class="grid grid-cols-[5.5rem_1fr_1fr_auto_auto] gap-x-2 items-center px-3 py-1.5 <%= current ? "bg-emerald-50" : "hover:bg-gray-50" %>">
+            <div class="flex items-center gap-1">
+              <% if sprint.number == @first_number %>
+                <%= number_field_tag "sprints[#{sprint.number}][number]", sprint.number, min: 1, step: 1, required: true,
+                      form: "sprints_save_form", class: "w-16 text-sm",
+                      title: "Numbering starts here — every sprint below follows on from this number" %>
+              <% else %>
+                <span class="text-sm font-medium <%= current ? "text-emerald-700" : "text-gray-700" %>"><%= sprint.number %></span>
+              <% end %>
+              <span class="text-emerald-600 text-[10px]" title="Current sprint"><%= "●" if current %></span>
+            </div>
+            <%= date_field_tag "sprints[#{sprint.number}][start_date]", sprint.start_date, form: "sprints_save_form", class: "w-full text-sm" %>
+            <%= date_field_tag "sprints[#{sprint.number}][end_date]", sprint.end_date, form: "sprints_save_form", class: "w-full text-sm" %>
+            <span>
+              <%= hidden_field_tag "sprints[#{sprint.number}][release]", "0", form: "sprints_save_form", id: nil %>
+              <%= check_box_tag "sprints[#{sprint.number}][release]", "1", sprint.release, form: "sprints_save_form",
+                    title: "Release this sprint — adds code freeze / submit / publish dates" %>
+            </span>
+            <div class="w-14 text-right">
+              <% if [ @first_number, @last_number ].include?(sprint.number) %>
+                <%= button_to "Delete", sprint_path(sprint.number), method: :delete,
+                      data: { turbo_confirm: "Delete sprint #{sprint.number}?" },
+                      class: ds_button(:danger_text) %>
+              <% end %>
+            </div>
+          </div>
+        <% end %>
+      </div>
+    </div>
+    <p class="text-xs text-gray-400">Marking "Release" adds code freeze (day 1), submit-to-store (Friday of week 1), and publish (Wednesday of week 2) to that sprint's timeline.</p>
+
+    <div class="flex items-center justify-between gap-3">
+      <%= button_to "+ Add sprint", sprints_path, method: :post, title: "Adds a 2-week sprint after the last one, starting the next Tuesday.",
+            class: "text-sm px-3 py-1.5 rounded bg-gray-900 text-white hover:bg-gray-700 cursor-pointer" %>
+      <%= submit_tag "Save changes", form: "sprints_save_form", class: ds_button(:primary) %>
+    </div>
+  </div>
+<% end %>

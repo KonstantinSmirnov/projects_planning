@@ -1,0 +1,31 @@
+<div class="flex flex-col h-screen" data-controller="gantt" data-gantt-projects-value="<%= gantt_projects_payload(@projects) %>" data-gantt-sprints-value="<%= gantt_sprints_payload(@sprints) %>" data-gantt-holidays-value="<%= gantt_holidays_payload %>" data-gantt-teams-value="<%= gantt_teams_payload(@teams) %>">
+  <header class="px-4 py-2.5 border-b border-gray-200 bg-white flex flex-wrap items-center gap-x-4 gap-y-2 shrink-0">
+    <%= link_to "Projects Planning", root_path, class: "text-base font-semibold text-gray-900 shrink-0 hover:text-gray-600" %>
+
+    <nav class="flex items-center gap-1 text-xs shrink-0">
+      <%= link_to "+ Project", new_project_path, data: { turbo_frame: "modal_body" },
+            class: "px-2 py-1 rounded text-indigo-600 hover:bg-indigo-50" %>
+      <%= link_to "Sprints", sprints_path, data: { turbo_frame: "modal_body" },
+            class: "px-2 py-1 rounded text-gray-600 hover:bg-gray-100" %>
+      <%= link_to "Holidays", public_holidays_path, data: { turbo_frame: "modal_body" },
+            class: "px-2 py-1 rounded text-gray-600 hover:bg-gray-100" %>
+      <%= link_to "Teams", teams_path, data: { turbo_frame: "modal_body" },
+            class: "px-2 py-1 rounded text-gray-600 hover:bg-gray-100" %>
+      <%= link_to "Export", export_data_path, class: "px-2 py-1 rounded text-gray-600 hover:bg-gray-100" %>
+      <%= link_to "Import", new_data_import_path, data: { turbo_frame: "modal_body" },
+            class: "px-2 py-1 rounded text-gray-600 hover:bg-gray-100" %>
+      <%= link_to "Design system", design_system_path, class: "px-2 py-1 rounded text-gray-600 hover:bg-gray-100" %>
+    </nav>
+
+    <div class="flex items-center shrink-0 ml-auto" data-gantt-target="toolbar"></div>
+  </header>
+
+  <% if flash[:alert] %>
+    <p class="<%= ds_alert(:error) %> border-x-0 rounded-none shrink-0"><%= flash[:alert] %></p>
+  <% end %>
+  <% if flash[:notice] %>
+    <p class="<%= ds_alert(:success) %> border-x-0 rounded-none shrink-0"><%= flash[:notice] %></p>
+  <% end %>
+
+  <div class="flex-1 overflow-auto bg-white" data-gantt-target="chart"></div>
+</div>

@@ -1,0 +1,27 @@
+<%= turbo_frame_tag "modal_body" do %>
+  <div class="p-4 space-y-4">
+    <%= render "shared/modal_header", title: "Add to #{@project.name}" %>
+
+    <div>
+      <h4 class="<%= ds_section_label %> mb-2">Milestone</h4>
+      <%= form_with model: [ @project, @milestone ], data: { turbo_frame: "_top" }, class: "space-y-2" do |f| %>
+        <%= f.text_field :name, placeholder: "e.g. Go Live", required: true, class: ds_field %>
+        <%= f.date_field :date, required: true, class: ds_field %>
+        <%= f.text_area :notes, placeholder: "Notes (optional)", rows: 2, class: ds_field %>
+        <%= f.submit "Add milestone", class: "w-full #{ds_button(:milestone)}" %>
+      <% end %>
+    </div>
+
+    <div class="border-t border-gray-100 pt-4">
+      <h4 class="<%= ds_section_label %> mb-2">Task</h4>
+      <%= form_with model: [ @project, @task ], data: { turbo_frame: "_top" }, class: "space-y-2" do |f| %>
+        <%= f.text_field :name, placeholder: "e.g. UAT", required: true, class: ds_field %>
+        <%= render "tasks/team_picker", f: f, teams: @teams %>
+        <%= render "tasks/sprint_picker", f: f, sprints: @sprints, locked: false %>
+        <p class="text-xs text-gray-400">Dates defaulted to the current sprint — adjust if needed.</p>
+        <%= f.text_area :notes, placeholder: "Notes (optional)", rows: 2, class: ds_field %>
+        <%= f.submit "Add task", class: "w-full #{ds_button(:task)}" %>
+      <% end %>
+    </div>
+  </div>
+<% end %>

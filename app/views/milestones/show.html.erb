@@ -1,0 +1,25 @@
+<%= turbo_frame_tag "modal_body" do %>
+  <div class="p-4 space-y-4" data-controller="item-form">
+    <%= render "shared/modal_header", title: safe_join([ tag.span("◆", class: "text-amber-500"), @milestone.name ], " ") %>
+    <p class="text-xs text-gray-500"><%= @milestone.project.name %></p>
+    <p data-item-form-target="error" class="<%= ds_alert(:error) %>" hidden></p>
+
+    <% if @milestone.verified? %>
+      <p class="text-xs text-gray-400">Verified — title and date are locked. Un-check "Verified" below to edit them.</p>
+    <% end %>
+
+    <%= form_with model: [ @milestone.project, @milestone ], data: { action: "submit->item-form#save" }, class: "space-y-2" do |f| %>
+      <%= f.text_field :name, disabled: @milestone.verified?, class: ds_field %>
+      <%= f.date_field :date, disabled: @milestone.verified?, class: ds_field %>
+      <label class="flex items-center gap-1.5 text-xs text-gray-600">
+        <%= f.check_box :verified %> Verified
+      </label>
+      <%= f.text_area :notes, placeholder: "Notes (optional)", rows: 3, class: ds_field %>
+      <%= f.submit "Save", class: "w-full #{ds_button(:primary)}" %>
+    <% end %>
+
+    <div class="border-t border-gray-100 pt-3">
+      <%= button_to "Delete milestone", [ @milestone.project, @milestone ], method: :delete, data: { turbo_confirm: "Delete this milestone?", turbo_frame: "_top" }, class: ds_button(:danger_text) %>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,53 @@
+<%= turbo_frame_tag "modal_body" do %>
+  <div class="p-4 space-y-4">
+    <%= render "shared/modal_header", title: "Teams configuration" %>
+
+    <% if flash[:alert] %>
+      <p class="<%= ds_alert(:error) %>"><%= flash[:alert] %></p>
+    <% end %>
+    <% if flash[:notice] %>
+      <p class="<%= ds_alert(:success) %>"><%= flash[:notice] %></p>
+    <% end %>
+
+    <p class="text-xs text-gray-500">
+      <%= pluralize(@teams.size, "team") %>.
+      Edit as many rows as you like, then press "Save changes" once at the bottom to apply everything together.
+      A task's color on the Gantt chart follows the team assigned to it on the task overlay.
+    </p>
+
+    <%# Empty save form — every row's inputs live outside it and reference it %>
+    <%# by `form=`, so the per-row Delete button (its own `<form>`) is never %>
+    <%# nested inside it. Unlike Sprints configuration (TASK-031), Save here %>
+    <%# targets `_top`: TASK-038 rework — closing the overlay on save is the %>
+    <%# wanted behavior for Teams, not the "stay open" pattern Sprints uses. %>
+    <%= form_with url: teams_path, method: :patch, id: "teams_save_form", data: { turbo_frame: "_top" } do %><% end %>
+
+    <div class="border border-gray-200 rounded overflow-hidden">
+      <div class="grid grid-cols-[auto_1fr_auto] gap-x-2 items-center bg-gray-50 border-b border-gray-200 px-3 py-2 text-xs uppercase tracking-wide text-gray-500">
+        <span>Color</span>
+        <span>Name</span>
+        <span class="sr-only">Delete</span>
+      </div>
+
+      <div class="max-h-[50vh] overflow-y-auto divide-y divide-gray-100">
+        <% if @teams.empty? %>
+          <p class="px-3 py-4 text-sm text-gray-400">No teams yet — add one below.</p>
+        <% end %>
+        <% @teams.each do |team| %>
+          <div class="grid grid-cols-[auto_1fr_auto] gap-x-2 items-center px-3 py-1.5 hover:bg-gray-50">
+            <%= color_field_tag "teams[#{team.id}][color]", team.color, form: "teams_save_form" %>
+            <%= text_field_tag "teams[#{team.id}][name]", team.name, form: "teams_save_form", required: true, class: "w-full text-sm" %>
+            <%= button_to "Delete", team_path(team), method: :delete,
+                  data: { turbo_confirm: "Delete the #{team.name} team? Its tasks will keep their dates but lose this team's color.", turbo_frame: "_top" },
+                  class: ds_button(:danger_text) %>
+          </div>
+        <% end %>
+      </div>
+    </div>
+
+    <div class="flex items-center justify-between gap-3">
+      <%= button_to "+ Add team", teams_path, method: :post, data: { turbo_frame: "_top" }, class: "text-sm px-3 py-1.5 rounded bg-gray-900 text-white hover:bg-gray-700 cursor-pointer" %>
+      <%= submit_tag "Save changes", form: "teams_save_form", class: ds_button(:primary) %>
+    </div>
+  </div>
+<% end %>

@@ -1,0 +1,7 @@
+<%= turbo_frame_tag "modal_body" do %>
+  <div class="p-4 space-y-4">
+    <%= render "shared/modal_header", title: "New project" %>
+
+    <%= render "form", project: @project %>
+  </div>
+<% end %>

@@ -1,0 +1,77 @@
+<%= turbo_frame_tag "modal_body" do %>
+  <div class="p-4 space-y-4">
+    <%= render "shared/modal_header", title: @project.name %>
+
+    <% if @project.date_range? %>
+      <p class="text-xs text-gray-500"><%= @project.start_date.strftime("%b %-d, %Y") %> &rarr; <%= @project.end_date.strftime("%b %-d, %Y") %></p>
+    <% else %>
+      <p class="text-xs text-gray-400">No dated items yet</p>
+    <% end %>
+
+    <%= render "form", project: @project %>
+
+    <div class="border-t border-gray-100 pt-3">
+      <h4 class="<%= ds_section_label %> mb-2">Status</h4>
+
+      <% all_items = @milestones + @tasks %>
+      <% if all_items.empty? %>
+        <p class="text-sm text-gray-400">Nothing added yet.</p>
+      <% else %>
+        <div class="flex flex-wrap gap-2 mb-3">
+          <% %i[ in_progress overdue upcoming ].each do |status| %>
+            <span class="<%= ds_status_badge(status) %>"><%= ds_status_label(status) %>: <%= all_items.count { |item| item.status == status } %></span>
+          <% end %>
+        </div>
+
+        <% if @milestones.any? %>
+          <p class="text-xs font-medium text-gray-500 mb-1">Milestones</p>
+          <table class="w-full text-sm border border-gray-200 rounded overflow-hidden mb-3">
+            <tbody class="divide-y divide-gray-100">
+              <% @milestones.each do |milestone| %>
+                <tr class="hover:bg-gray-50">
+                  <td class="px-2 py-1.5">
+                    <%= link_to project_milestone_path(@project, milestone), data: { turbo_frame: "modal_body" }, class: "hover:underline" do %>
+                      <span class="text-amber-500">&#9670;</span> <%= milestone.name %>
+                    <% end %>
+                    <% if milestone.verified? %>
+                      <span class="text-emerald-600 text-xs" title="Verified">&check;</span>
+                    <% end %>
+                  </td>
+                  <td class="px-2 py-1.5 text-xs text-gray-400 whitespace-nowrap"><%= milestone.date.strftime("%b %-d, %Y") %></td>
+                  <td class="px-2 py-1.5"><span class="<%= ds_status_badge(milestone.status) %>"><%= ds_status_label(milestone.status) %></span></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% end %>
+
+        <% if @tasks.any? %>
+          <p class="text-xs font-medium text-gray-500 mb-1">Tasks</p>
+          <table class="w-full text-sm border border-gray-200 rounded overflow-hidden">
+            <tbody class="divide-y divide-gray-100">
+              <% @tasks.each do |task| %>
+                <tr class="hover:bg-gray-50">
+                  <td class="px-2 py-1.5">
+                    <%= link_to project_task_path(@project, task), data: { turbo_frame: "modal_body" }, class: "hover:underline" do %>
+                      <span class="text-blue-500">&#9644;</span> <%= task.name %>
+                    <% end %>
+                    <% if task.verified? %>
+                      <span class="text-emerald-600 text-xs" title="Verified">&check;</span>
+                    <% end %>
+                  </td>
+                  <td class="px-2 py-1.5 text-xs text-gray-400 whitespace-nowrap"><%= task.start_date.strftime("%b %-d") %>&ndash;<%= task.end_date.strftime("%b %-d, %Y") %></td>
+                  <td class="px-2 py-1.5 text-xs text-gray-500"><%= task.team&.name || "—" %></td>
+                  <td class="px-2 py-1.5"><span class="<%= ds_status_badge(task.status) %>"><%= ds_status_label(task.status) %></span></td>
+                </tr>
+              <% end %>
+            </tbody>
+          </table>
+        <% end %>
+      <% end %>
+    </div>
+
+    <div class="border-t border-gray-100 pt-3">
+      <%= button_to "Delete project", project_path(@project), method: :delete, data: { turbo_confirm: "Delete #{@project.name} and all its milestones/tasks?", turbo_frame: "_top" }, class: ds_button(:danger_text) %>
+    </div>
+  </div>
+<% end %>

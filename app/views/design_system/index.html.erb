@@ -1,0 +1,113 @@
+<% content_for :title, "Design System" %>
+
+<div class="max-w-4xl mx-auto px-6 py-10 space-y-12">
+  <header>
+    <h1 class="text-2xl font-semibold text-gray-900">Design system</h1>
+    <p class="text-sm text-gray-500 mt-1">
+      Every reusable piece of UI in this app, rendered live from the same helpers and partials the
+      real views call — <%= link_to "back to the app", root_path, class: "text-indigo-600 hover:underline" %>.
+    </p>
+  </header>
+
+  <section class="space-y-3">
+    <h2 class="text-lg font-semibold text-gray-800">Buttons</h2>
+    <p class="text-sm text-gray-500">
+      <code class="bg-gray-100 px-1 rounded">ds_button(variant)</code> in
+      <code class="bg-gray-100 px-1 rounded">app/helpers/design_system_helper.rb</code>. Use on
+      <code class="bg-gray-100 px-1 rounded">f.submit</code>, <code class="bg-gray-100 px-1 rounded">link_to</code>
+      or <code class="bg-gray-100 px-1 rounded">button_to</code> — never retype the Tailwind classes by hand.
+    </p>
+    <div class="flex flex-wrap items-center gap-3 p-4 border border-gray-200 rounded-lg bg-white">
+      <button type="button" class="<%= ds_button(:primary) %>">Primary</button>
+      <button type="button" class="<%= ds_button(:dark) %>">Dark</button>
+      <button type="button" class="<%= ds_button(:danger) %>">Danger</button>
+      <button type="button" class="<%= ds_button(:danger_text) %>">Danger (text)</button>
+      <button type="button" class="<%= ds_button(:ghost) %>">Ghost</button>
+      <button type="button" class="<%= ds_button(:milestone) %>">Milestone</button>
+      <button type="button" class="<%= ds_button(:task) %>">Task</button>
+    </div>
+    <p class="text-xs text-gray-400">
+      Primary = the default save/confirm action inside an overlay. Dark = the one primary create
+      action on the main screen ("+ Project"). Danger / danger (text) = destructive actions, solid
+      or as an inline link. Ghost = a low-emphasis secondary action. Milestone / task match the
+      amber ◆ / blue ▬ color coding used everywhere else, for their own "Add" buttons.
+    </p>
+  </section>
+
+  <section class="space-y-3">
+    <h2 class="text-lg font-semibold text-gray-800">Form fields</h2>
+    <p class="text-sm text-gray-500">
+      Border, padding, radius and focus ring come from a <code class="bg-gray-100 px-1 rounded">@layer base</code>
+      rule in <code class="bg-gray-100 px-1 rounded">app/assets/tailwind/application.css</code> — every
+      text/date/number/textarea gets this automatically. Pass
+      <code class="bg-gray-100 px-1 rounded">class: ds_field</code> (nothing) for the default full-width
+      field, or <code class="bg-gray-100 px-1 rounded">class: ds_field(width: "w-1/2")</code> for a
+      side-by-side pair.
+    </p>
+    <div class="p-4 border border-gray-200 rounded-lg bg-white space-y-3 max-w-sm">
+      <input type="text" placeholder="Full-width text field" class="<%= ds_field %>">
+      <div class="flex gap-2">
+        <input type="date" class="<%= ds_field(width: "w-1/2") %>">
+        <input type="date" class="<%= ds_field(width: "w-1/2") %>">
+      </div>
+      <textarea placeholder="Notes (optional)" rows="2" class="<%= ds_field %>"></textarea>
+      <label class="flex items-center gap-2 text-sm text-gray-700">
+        <input type="checkbox"> A checkbox, for confirmation-style forms
+      </label>
+    </div>
+  </section>
+
+  <section class="space-y-3">
+    <h2 class="text-lg font-semibold text-gray-800">Alerts</h2>
+    <p class="text-sm text-gray-500">
+      <code class="bg-gray-100 px-1 rounded">ds_alert(:error)</code> /
+      <code class="bg-gray-100 px-1 rounded">ds_alert(:success)</code> — used for both real flash
+      messages and inline warnings (e.g. the import overlay's destructive-action notice).
+    </p>
+    <div class="space-y-2">
+      <p class="<%= ds_alert(:error) %>">Something needs your attention.</p>
+      <p class="<%= ds_alert(:success) %>">Saved successfully.</p>
+    </div>
+  </section>
+
+  <section class="space-y-3">
+    <h2 class="text-lg font-semibold text-gray-800">Section label</h2>
+    <p class="text-sm text-gray-500"><code class="bg-gray-100 px-1 rounded">ds_section_label</code> — the small uppercase heading used inside overlays ("Milestones & tasks", "Work in this sprint", …).</p>
+    <div class="p-4 border border-gray-200 rounded-lg bg-white">
+      <h4 class="<%= ds_section_label %>">Example section</h4>
+    </div>
+  </section>
+
+  <section class="space-y-3">
+    <h2 class="text-lg font-semibold text-gray-800">Modal header</h2>
+    <p class="text-sm text-gray-500">
+      <code class="bg-gray-100 px-1 rounded">render "shared/modal_header", title: "…"</code> — every
+      overlay (project card, milestone/task detail, sprint config, import) opens with this. Pass a
+      plain string, or <code class="bg-gray-100 px-1 rounded">safe_join([tag.span("◆", class: "text-amber-500"), name], " ")</code>
+      for a title with an icon.
+    </p>
+    <div class="p-4 border border-gray-200 rounded-lg bg-white max-w-sm">
+      <%= render "shared/modal_header", title: safe_join([ tag.span("◆", class: "text-amber-500"), "Example overlay" ], " ") %>
+    </div>
+  </section>
+
+  <section class="space-y-3">
+    <h2 class="text-lg font-semibold text-gray-800">Row type indicators</h2>
+    <p class="text-sm text-gray-500">Used on the Gantt chart's label column and everywhere a milestone/task is listed by name.</p>
+    <div class="p-4 border border-gray-200 rounded-lg bg-white flex flex-col gap-2 text-sm text-gray-700">
+      <span><span class="text-amber-500">◆</span> Milestone — a single date</span>
+      <span><span class="text-blue-500">▬</span> Task — a date range</span>
+    </div>
+  </section>
+
+  <section class="space-y-3">
+    <h2 class="text-lg font-semibold text-gray-800">Sprint &amp; isolate badges</h2>
+    <p class="text-sm text-gray-500">From the Gantt toolbar and the Sprints configuration list.</p>
+    <div class="p-4 border border-gray-200 rounded-lg bg-white flex flex-wrap items-center gap-3">
+      <span class="text-xs pl-3 pr-2 py-1.5 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700">Only Website Relaunch &times;</span>
+      <span class="text-xs font-medium text-emerald-700 bg-emerald-50 px-2 py-1 rounded flex items-center gap-1">
+        <span class="text-emerald-600">&#9679;</span> Current sprint
+      </span>
+    </div>
+  </section>
+</div>
