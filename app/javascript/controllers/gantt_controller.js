@@ -97,6 +97,10 @@ export default class extends Controller {
     // isolation needs to survive that the same way the scroll position does.
     this.isolatedProjectId = this.readPersistedId("ganttIsolatedProjectId")
     this.teamFilterId = this.readPersistedId("ganttTeamFilterId")
+    // Which projects are collapsed to just their own row (milestones/tasks
+    // hidden) — a set, unlike isolation/team-filter above, since more than
+    // one project can be collapsed at once.
+    this.collapsedProjectIds = new Set(this.readPersistedIdList("ganttCollapsedProjectIds"))
     // Falls back to a persisted scroll position rather than always "today":
     // a full-page redirect after saving a milestone/task (data-turbo-frame
     // "_top") can lead Turbo's morph to replace this element outright rather
@@ -110,6 +114,7 @@ export default class extends Controller {
     this.lastKnownCenterDate = this.pendingCenterDate
     this.hasConnected = false
     this.releaseRowsExpanded = false
+    this.holidayRowsExpanded = false
     this.holidaysVisible = this.readVisiblePref("ganttHolidaysVisible")
     this.releasesVisible = this.readVisiblePref("ganttReleasesVisible")
     this.stickToKeyDates = this.readVisiblePref("ganttStickToKeyDates")
@@ -158,6 +163,26 @@ export default class extends Controller {
       } else {
         window.sessionStorage.setItem(key, String(id))
       }
+    } catch {
+      // Ignore — worst case it doesn't survive a reload.
+    }
+  }
+
+  // Same sessionStorage reasoning as readPersistedId above, for a set of ids
+  // (collapsed projects) rather than a single one.
+  readPersistedIdList(key) {
+    try {
+      const stored = window.sessionStorage.getItem(key)
+      const parsed = stored ? JSON.parse(stored) : []
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  }
+
+  persistIdList(key, ids) {
+    try {
+      window.sessionStorage.setItem(key, JSON.stringify(ids))
     } catch {
       // Ignore — worst case it doesn't survive a reload.
     }
@@ -302,22 +327,6 @@ export default class extends Controller {
   renderToolbar() {
     this.toolbarTarget.innerHTML = ""
 
-    if (this.isolatedProjectId != null) {
-      const isolated = this.projectsValue.find((p) => p.id === this.isolatedProjectId)
-      const badge = el("button", "text-xs pl-3 pr-2 py-1.5 mr-2 rounded-full border border-indigo-300 bg-indigo-50 text-indigo-700 hover:bg-indigo-100")
-      badge.type = "button"
-      badge.innerHTML = `Only <span class="font-semibold"></span> <span aria-hidden="true">&times;</span>`
-      badge.querySelector("span").textContent = isolated ? isolated.name : "…"
-      badge.title = "Show all projects again"
-      badge.addEventListener("click", () => {
-        this.isolatedProjectId = null
-        this.persistId("ganttIsolatedProjectId", null)
-        this.renderToolbar()
-        this.render()
-      })
-      this.toolbarTarget.appendChild(badge)
-    }
-
     if (this.teamsValue.length > 0) {
       // `select` gets `width: 100%` from the global base-layer form-control
       // styling (app/assets/tailwind/application.css) — harmless inside a
@@ -442,12 +451,28 @@ export default class extends Controller {
     this.isolatedProjectId = this.isolatedProjectId === projectId ? null : projectId
     this.persistId("ganttIsolatedProjectId", this.isolatedProjectId)
     this.pendingCenterDate = this.centerDate() || today()
-    this.renderToolbar()
+    this.render()
+  }
+
+  toggleProjectCollapsed(projectId) {
+    if (this.collapsedProjectIds.has(projectId)) {
+      this.collapsedProjectIds.delete(projectId)
+    } else {
+      this.collapsedProjectIds.add(projectId)
+    }
+    this.persistIdList("ganttCollapsedProjectIds", [ ...this.collapsedProjectIds ])
+    this.pendingCenterDate = this.centerDate() || today()
     this.render()
   }
 
   toggleReleaseRows() {
     this.releaseRowsExpanded = !this.releaseRowsExpanded
+    this.pendingCenterDate = this.centerDate() || today()
+    this.render()
+  }
+
+  toggleHolidayRows() {
+    this.holidayRowsExpanded = !this.holidayRowsExpanded
     this.pendingCenterDate = this.centerDate() || today()
     this.render()
   }
@@ -492,10 +517,12 @@ export default class extends Controller {
     // With a team filter active, projectRows() already drops milestones and
     // every non-matching task — a project contributing nothing but its own
     // row (no matching work) disappears entirely, since the point of the
-    // filter is seeing only what that team has to do.
+    // filter is seeing only what that team has to do. Checked via itemCount,
+    // not projectRows().length — a collapsed project with matching work also
+    // renders just its own row, but shouldn't disappear because of that.
     const rows = visibleProjects.flatMap((project) => {
       const projectRows = this.projectRows(project)
-      if (this.teamFilterId != null && projectRows.length === 1) return []
+      if (this.teamFilterId != null && projectRows[0].itemCount === 0) return []
       return projectRows
     })
     const dated = rows.filter((row) => row.start && row.end)
@@ -551,15 +578,26 @@ export default class extends Controller {
     }))
     const releaseRowCount = releaseRowDefs.length === 0 ? 0 : (this.releaseRowsExpanded ? releaseRowDefs.length + 1 : 1)
 
-    // One shared row for every region's holidays that fall within the
-    // visible range — hidden entirely by the "Holidays" toolbar toggle.
+    // Collapsed by default into a single group header row (mirroring the
+    // Releases group above), split by region — one row per country — when
+    // expanded. Hidden entirely by the "Holidays" toolbar toggle.
     const visibleHolidays = this.holidaysVisible
       ? this.holidaysValue.filter((h) => {
         const date = parseDate(h.date)
         return date >= rangeStart && date <= rangeEnd
       })
       : []
-    const holidayRowCount = visibleHolidays.length > 0 ? 1 : 0
+    const holidayRegionDefs = []
+    visibleHolidays.forEach((h) => {
+      let def = holidayRegionDefs.find((d) => d.label === h.region_label)
+      if (!def) {
+        def = { label: h.region_label, colorClass: h.color_class, holidays: [] }
+        holidayRegionDefs.push(def)
+      }
+      def.holidays.push(h)
+    })
+    holidayRegionDefs.sort((a, b) => a.label.localeCompare(b.label))
+    const holidayRowCount = holidayRegionDefs.length === 0 ? 0 : (this.holidayRowsExpanded ? holidayRegionDefs.length + 1 : 1)
 
     const bodyHeight = (rows.length + releaseRowCount + holidayRowCount) * ROW_H
 
@@ -576,9 +614,15 @@ export default class extends Controller {
     // down, the same way the header rows and sprint row already do — each
     // sticky row's `top` stacks on however many sticky rows come before it.
     let stickyTop = HEADER_ROW_H * 2 + SPRINT_ROW_H
-    if (holidayRowCount > 0) {
-      body.appendChild(this.buildHolidayRow(visibleHolidays, rangeStart, scale, totalWidth, stickyTop))
+    if (holidayRegionDefs.length > 0) {
+      body.appendChild(this.buildHolidayGroupHeader(holidayRegionDefs, rangeStart, scale, totalWidth, stickyTop))
       stickyTop += ROW_H
+      if (this.holidayRowsExpanded) {
+        holidayRegionDefs.forEach((def) => {
+          body.appendChild(this.buildHolidayRegionRow(def, rangeStart, scale, totalWidth, stickyTop))
+          stickyTop += ROW_H
+        })
+      }
     }
     if (releaseRowDefs.length > 0) {
       body.appendChild(this.buildReleaseGroupHeader(releaseRowDefs, rangeStart, scale, totalWidth, stickyTop))
@@ -628,6 +672,11 @@ export default class extends Controller {
     const projectUrl = `/projects/${project.id}`
     const start = project.start_date ? parseDate(project.start_date) : null
     const end = project.end_date ? parseDate(project.end_date) : null
+    const collapsed = this.collapsedProjectIds.has(project.id)
+    const visibleTaskCount = this.teamFilterId == null
+      ? project.tasks.length
+      : project.tasks.filter((t) => t.team_id === this.teamFilterId).length
+    const itemCount = (this.teamFilterId == null ? project.milestones.length : 0) + visibleTaskCount
 
     rows.push({
       type: "project",
@@ -638,10 +687,15 @@ export default class extends Controller {
       href: projectUrl,
       addHref: `${projectUrl}/new_item`,
       projectId: project.id,
+      collapsed,
+      itemCount,
       sortableId: project.id,
       sortableGroup: "projects",
       sortableUrl: "/projects/reorder"
     })
+
+    // Collapsed: only the project's own row shows, nothing below it.
+    if (collapsed) return rows
 
     // A team filter narrows this down to just that team's tasks — milestones
     // aren't owned by any team, so they're left out entirely while a filter
@@ -879,7 +933,23 @@ export default class extends Controller {
       label.appendChild(dateEl)
     }
 
+    if (row.type === "project" && row.collapsed && row.itemCount > 0) {
+      const countEl = el("span", "shrink-0 text-[11px] text-gray-400")
+      countEl.textContent = `(${row.itemCount})`
+      label.appendChild(countEl)
+    }
+
     if (row.type === "project") {
+      const collapseBtn = el("button", `shrink-0 px-1 ${row.collapsed ? "text-indigo-600" : "text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100"}`)
+      collapseBtn.type = "button"
+      collapseBtn.title = row.collapsed ? "Expand project" : "Collapse project"
+      collapseBtn.textContent = row.collapsed ? "▸" : "▾"
+      collapseBtn.addEventListener("click", (event) => {
+        event.preventDefault()
+        this.toggleProjectCollapsed(row.projectId)
+      })
+      label.appendChild(collapseBtn)
+
       const isIsolated = this.isolatedProjectId === row.projectId
       const isolateBtn = el("button", `shrink-0 px-1 ${isIsolated ? "text-indigo-600" : "text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100"}`)
       isolateBtn.type = "button"
@@ -984,24 +1054,53 @@ export default class extends Controller {
     track.appendChild(titleEl)
   }
 
-  // Read-only row for every visible public holiday across all regions —
-  // color-coded per region (see PublicHoliday::REGION_COLORS), all sharing
-  // one row rather than one per country to keep the sidebar compact.
-  buildHolidayRow(holidays, rangeStart, scale, totalWidth, stickyTop) {
-    const rowEl = el("div", "flex relative bg-gray-50/60", { height: `${ROW_H}px`, position: "sticky", top: `${stickyTop}px`, zIndex: Z.header })
+  // Collapsed-by-default summary row for public holidays across all regions
+  // (see PublicHoliday::REGION_COLORS): one clickable label ("Public
+  // holidays ▸ N dates") whose track still overlays every color-coded
+  // region's markers, so nothing disappears when the per-region rows are
+  // collapsed — only their separate labels do. Mirrors buildReleaseGroupHeader.
+  buildHolidayGroupHeader(holidayRegionDefs, rangeStart, scale, totalWidth, stickyTop) {
+    const rowEl = el("div", "flex relative bg-gray-50", { height: `${ROW_H}px`, position: "sticky", top: `${stickyTop}px`, zIndex: Z.header })
 
-    const labelEl = el("div", "sticky left-0 bg-gray-50 border-r border-b border-gray-200 shrink-0 text-xs font-medium text-gray-700 flex items-center pl-2 pr-2 truncate", {
+    const labelEl = el("button", "sticky left-0 bg-gray-50 border-r border-b border-gray-200 shrink-0 text-xs font-medium text-gray-700 flex items-center gap-1 pl-2 pr-2 truncate hover:bg-gray-100 cursor-pointer", {
       width: `${LABEL_WIDTH}px`, height: `${ROW_H}px`, zIndex: Z.corner
     })
-    labelEl.textContent = "Public holidays"
+    labelEl.type = "button"
+    const totalHolidays = holidayRegionDefs.reduce((sum, def) => sum + def.holidays.length, 0)
+    labelEl.innerHTML = `<span aria-hidden="true">${this.holidayRowsExpanded ? "▾" : "▸"}</span> Public holidays <span class="text-gray-400">(${totalHolidays})</span>`
+    labelEl.title = this.holidayRowsExpanded ? "Collapse holidays" : "Expand to see each country separately"
+    labelEl.addEventListener("click", () => this.toggleHolidayRows())
     rowEl.appendChild(labelEl)
 
     const track = el("div", "relative border-b border-gray-100", { width: `${totalWidth}px`, height: `${ROW_H}px`, zIndex: Z.bars })
-    const items = holidays.map((h) => ({ ...h, colorClass: h.color_class }))
-    this.appendDayBands(track, items, rangeStart, scale, {
+    const flatHolidays = holidayRegionDefs.flatMap((def) => def.holidays.map((h) => ({ ...h, colorClass: h.color_class })))
+    this.appendDayBands(track, flatHolidays, rangeStart, scale, {
       title: (h, dateKey) => `${h.region_label} — ${h.name} — ${dateKey} (click for details)`,
       // The details overlay looks up every holiday on this date
       // server-side, not just the one region this particular band is for.
+      onClick: (h, dateKey) => this.navigateToOverlay(`/public_holidays?date=${dateKey}`)
+    })
+    rowEl.appendChild(track)
+
+    return rowEl
+  }
+
+  // Read-only, per-region row of public holidays — not tied to any project,
+  // so no drag/reorder/click-to-edit; only rendered when the group header
+  // above is expanded. Mirrors buildReleaseRow.
+  buildHolidayRegionRow(def, rangeStart, scale, totalWidth, stickyTop) {
+    const rowEl = el("div", "flex relative bg-gray-50", { height: `${ROW_H}px`, position: "sticky", top: `${stickyTop}px`, zIndex: Z.header })
+
+    const labelEl = el("div", "sticky left-0 bg-gray-50 border-r border-b border-gray-200 shrink-0 text-xs text-gray-600 flex items-center pl-6 pr-2 truncate", {
+      width: `${LABEL_WIDTH}px`, height: `${ROW_H}px`, zIndex: Z.corner
+    })
+    labelEl.textContent = def.label
+    rowEl.appendChild(labelEl)
+
+    const track = el("div", "relative border-b border-gray-100", { width: `${totalWidth}px`, height: `${ROW_H}px`, zIndex: Z.bars })
+    const items = def.holidays.map((h) => ({ ...h, colorClass: h.color_class }))
+    this.appendDayBands(track, items, rangeStart, scale, {
+      title: (h, dateKey) => `${h.name} — ${dateKey} (click for details)`,
       onClick: (h, dateKey) => this.navigateToOverlay(`/public_holidays?date=${dateKey}`)
     })
     rowEl.appendChild(track)
@@ -1021,7 +1120,7 @@ export default class extends Controller {
     })
     labelEl.type = "button"
     const totalMarkers = releaseRowDefs.reduce((sum, def) => sum + def.markers.length, 0)
-    labelEl.innerHTML = `<span aria-hidden="true">${this.releaseRowsExpanded ? "▾" : "▸"}</span> Release <span class="text-gray-400">(${totalMarkers})</span>`
+    labelEl.innerHTML = `<span aria-hidden="true">${this.releaseRowsExpanded ? "▾" : "▸"}</span> Releases <span class="text-gray-400">(${totalMarkers})</span>`
     labelEl.title = this.releaseRowsExpanded ? "Collapse release dates" : "Expand to see code freeze / submit to store / publish separately"
     labelEl.addEventListener("click", () => this.toggleReleaseRows())
     rowEl.appendChild(labelEl)
@@ -1041,7 +1140,7 @@ export default class extends Controller {
   // project, so no drag/reorder/click-to-edit; one marker per release sprint.
   // Only rendered when the group header above is expanded.
   buildReleaseRow(label, colorClass, markers, rangeStart, scale, totalWidth, stickyTop) {
-    const rowEl = el("div", "flex relative bg-gray-50/60", { height: `${ROW_H}px`, position: "sticky", top: `${stickyTop}px`, zIndex: Z.header })
+    const rowEl = el("div", "flex relative bg-gray-50", { height: `${ROW_H}px`, position: "sticky", top: `${stickyTop}px`, zIndex: Z.header })
 
     const labelEl = el("div", "sticky left-0 bg-gray-50 border-r border-b border-gray-200 shrink-0 text-xs text-gray-600 flex items-center pl-6 pr-2 truncate", {
       width: `${LABEL_WIDTH}px`, height: `${ROW_H}px`, zIndex: Z.corner

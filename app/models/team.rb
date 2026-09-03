@@ -1,4 +1,6 @@
 class Team < ApplicationRecord
+  include Trackable
+
   DEFAULTS = [
     { name: "Launchpad", color: "#f97316" },
     { name: "NativeX", color: "#8b5cf6" },
@@ -16,5 +18,9 @@ class Team < ApplicationRecord
 
   def self.ensure_seeded!
     DEFAULTS.each { |attrs| create!(attrs) } if none?
+  end
+
+  def activity_label
+    name
   end
 end

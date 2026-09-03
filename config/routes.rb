@@ -30,6 +30,8 @@ Rails.application.routes.draw do
 
   get "public_holidays", to: "public_holidays#index", as: :public_holidays
 
+  get "activities", to: "activities#index", as: :activities
+
   get "teams", to: "teams#index", as: :teams
   post "teams", to: "teams#create"
   patch "teams", to: "teams#update_all"

@@ -1,4 +1,6 @@
 class Project < ApplicationRecord
+  include Trackable
+
   has_many :milestones, -> { order(:position) }, dependent: :destroy
   has_many :tasks, -> { order(:position) }, dependent: :destroy
 
@@ -18,6 +20,10 @@ class Project < ApplicationRecord
 
   def date_range?
     start_date.present? && end_date.present?
+  end
+
+  def activity_label
+    name
   end
 
   private

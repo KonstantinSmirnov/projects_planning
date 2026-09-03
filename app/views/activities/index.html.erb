@@ -1,0 +1,43 @@
+<%= turbo_frame_tag "modal_body" do %>
+  <div class="p-4 space-y-4">
+    <%= render "shared/modal_header", title: "Activity" %>
+
+    <p class="text-xs text-gray-500">
+      The last <%= @activities.size %> change<%= "s" unless @activities.size == 1 %> across projects, milestones, tasks, sprints and teams.
+      "Who" is blank until the app has user accounts to attribute changes to.
+    </p>
+
+    <div class="border border-gray-200 rounded overflow-hidden">
+      <div class="grid grid-cols-[9rem_1fr_7rem] gap-x-3 items-center bg-gray-50 border-b border-gray-200 px-3 py-2 text-xs uppercase tracking-wide text-gray-500">
+        <span>When</span>
+        <span>Change</span>
+        <span>Who</span>
+      </div>
+
+      <div class="max-h-[60vh] overflow-y-auto divide-y divide-gray-100">
+        <% if @activities.empty? %>
+          <p class="px-3 py-4 text-sm text-gray-400">No changes logged yet.</p>
+        <% end %>
+        <% @activities.each do |activity| %>
+          <div class="grid grid-cols-[9rem_1fr_7rem] gap-x-3 items-start px-3 py-2 text-sm hover:bg-gray-50">
+            <span class="text-gray-500 text-xs whitespace-nowrap" title="<%= activity.created_at.iso8601 %>">
+              <%= activity.created_at.strftime("%b %-d, %Y %H:%M") %>
+            </span>
+            <span class="text-gray-800">
+              <%= activity_type_badge(activity.trackable_type) %>
+              <strong><%= activity.trackable_name %></strong>
+              <%= activity_action_label(activity.action) %>
+              <% if activity.project_name.present? %>
+                <span class="text-gray-400">in <%= activity.project_name %></span>
+              <% end %>
+              <% if activity.details.present? %>
+                <div class="text-xs text-gray-500 mt-0.5"><%= activity.details %></div>
+              <% end %>
+            </span>
+            <span class="text-xs text-gray-400"><%= activity.actor || "—" %></span>
+          </div>
+        <% end %>
+      </div>
+    </div>
+  </div>
+<% end %>

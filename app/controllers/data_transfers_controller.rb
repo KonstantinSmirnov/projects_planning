@@ -49,49 +49,67 @@ class DataTransfersController < ApplicationController
 
     counts = { projects: 0, milestones: 0, tasks: 0, sprints: 0, teams: 0 }
 
-    ActiveRecord::Base.transaction do
-      Project.destroy_all
-      Sprint.destroy_all
-      Team.destroy_all
+    # A full restore destroys and recreates every record — logging each one
+    # individually would bury whatever a human actually changed under
+    # hundreds of "created"/"deleted" entries. Suppressed in favor of the one
+    # summary entry logged below.
+    #
+    # `suppress` has to wrap the transaction, not sit inside it: Trackable's
+    # logging runs from after_*_commit callbacks, which Rails defers until
+    # the outermost transaction actually commits — by which point a
+    # suppress block placed only around the create!/destroy_all calls would
+    # already have exited and reset the flag.
+    Activity.suppress do
+      ActiveRecord::Base.transaction do
+        Project.destroy_all
+        Sprint.destroy_all
+        Team.destroy_all
 
-      teams_by_name = {}
-      Array(data["teams"]).each do |t|
-        team = Team.create!(name: t["name"], color: t["color"])
-        teams_by_name[team.name] = team
-        counts[:teams] += 1
-      end
-
-      Array(data["sprints"]).each do |s|
-        Sprint.create!(number: s["number"], start_date: s["start_date"], end_date: s["end_date"],
-                       release: truthy(s["release"]))
-        counts[:sprints] += 1
-      end
-
-      Array(data["projects"]).each do |p|
-        project = Project.create!(name: p["name"], description: p["description"])
-        counts[:projects] += 1
-
-        Array(p["milestones"]).each do |m|
-          project.milestones.create!(name: m["name"], date: m["date"], notes: m["notes"],
-                                     verified: truthy(m["verified"]))
-          counts[:milestones] += 1
+        teams_by_name = {}
+        Array(data["teams"]).each do |t|
+          team = Team.create!(name: t["name"], color: t["color"])
+          teams_by_name[team.name] = team
+          counts[:teams] += 1
         end
 
-        Array(p["tasks"]).each do |t|
-          # A file from before teams existed simply has no "team" key, and a
-          # file naming a team that isn't in its own teams list still restores
-          # the task — unassigned rather than not at all.
-          project.tasks.create!(name: t["name"], start_date: t["start_date"], end_date: t["end_date"],
-                                notes: t["notes"], verified: truthy(t["verified"]),
-                                team: teams_by_name[t["team"]])
-          counts[:tasks] += 1
+        Array(data["sprints"]).each do |s|
+          Sprint.create!(number: s["number"], start_date: s["start_date"], end_date: s["end_date"],
+                         release: truthy(s["release"]))
+          counts[:sprints] += 1
         end
-      end
 
-      # An import of a pre-teams file would otherwise leave the app with no
-      # teams at all and no obvious way back to the defaults.
-      Team.ensure_seeded!
+        Array(data["projects"]).each do |p|
+          project = Project.create!(name: p["name"], description: p["description"])
+          counts[:projects] += 1
+
+          Array(p["milestones"]).each do |m|
+            project.milestones.create!(name: m["name"], date: m["date"], notes: m["notes"],
+                                       verified: truthy(m["verified"]))
+            counts[:milestones] += 1
+          end
+
+          Array(p["tasks"]).each do |t|
+            # A file from before teams existed simply has no "team" key, and a
+            # file naming a team that isn't in its own teams list still restores
+            # the task — unassigned rather than not at all.
+            project.tasks.create!(name: t["name"], start_date: t["start_date"], end_date: t["end_date"],
+                                  notes: t["notes"], verified: truthy(t["verified"]),
+                                  team: teams_by_name[t["team"]])
+            counts[:tasks] += 1
+          end
+        end
+
+        # An import of a pre-teams file would otherwise leave the app with no
+        # teams at all and no obvious way back to the defaults.
+        Team.ensure_seeded!
+      end
     end
+
+    Activity.create!(
+      trackable_type: "Import", trackable_id: 0, trackable_name: "Data import", action: "imported",
+      details: "Replaced all data: #{counts[:projects]} projects, #{counts[:milestones]} milestones, " \
+               "#{counts[:tasks]} tasks, #{counts[:sprints]} sprints, #{counts[:teams]} teams"
+    )
 
     redirect_to root_path, notice: "Imported #{counts[:projects]} projects, #{counts[:milestones]} milestones, " \
                                    "#{counts[:tasks]} tasks, #{counts[:sprints]} sprints and #{counts[:teams]} teams."

@@ -1,5 +1,7 @@
 <%= form_with model: project, url: (project.persisted? ? project_path(project) : projects_path), data: { turbo_frame: "_top" }, class: "space-y-2" do |f| %>
   <%= f.text_field :name, placeholder: "Project name", class: ds_field %>
   <%= f.text_area :description, placeholder: "Description / notes (optional)", rows: 3, class: ds_field %>
-  <%= f.submit(project.persisted? ? "Save" : "Add project", class: "w-full #{ds_button(:dark)}") %>
+  <div class="flex justify-end">
+    <%= f.submit(project.persisted? ? "Save" : "Add project", class: ds_button(:dark)) %>
+  </div>
 <% end %>

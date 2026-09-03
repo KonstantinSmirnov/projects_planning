@@ -1,4 +1,6 @@
 class Task < ApplicationRecord
+  include Trackable
+
   belongs_to :project
   belongs_to :team, optional: true
 
@@ -28,6 +30,26 @@ class Task < ApplicationRecord
     return :overdue if end_date < Date.current
 
     :in_progress
+  end
+
+  def activity_label
+    name
+  end
+
+  def activity_project_name
+    project.name
+  end
+
+  # Same shape as Trackable's default (saved_changes), but with the raw
+  # `team_id` before/after swapped for team names — a bare id is meaningless
+  # in the activity log, and by the time it's read the team may have been
+  # renamed or deleted since.
+  def activity_changes
+    changes = saved_changes.except("team_id")
+    return changes unless saved_changes.key?("team_id")
+
+    before_id, after_id = saved_changes["team_id"]
+    changes.merge("team" => [ Team.find_by(id: before_id)&.name, Team.find_by(id: after_id)&.name ])
   end
 
   private

@@ -1,4 +1,6 @@
 class Milestone < ApplicationRecord
+  include Trackable
+
   belongs_to :project
 
   before_create :append_position
@@ -19,6 +21,14 @@ class Milestone < ApplicationRecord
     return :overdue if date < Date.current
 
     :in_progress
+  end
+
+  def activity_label
+    name
+  end
+
+  def activity_project_name
+    project.name
   end
 
   private

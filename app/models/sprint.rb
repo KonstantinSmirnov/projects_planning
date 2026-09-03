@@ -1,4 +1,6 @@
 class Sprint < ApplicationRecord
+  include Trackable
+
   DEFAULT_LENGTH_DAYS = 14
   SEED_THROUGH = Date.new(2027, 12, 31)
   TUESDAY = 2
@@ -92,6 +94,10 @@ class Sprint < ApplicationRecord
 
   def publish_date
     day_in_week(start_date + 7, WEDNESDAY)
+  end
+
+  def activity_label
+    "Sprint #{number}"
   end
 
   private
