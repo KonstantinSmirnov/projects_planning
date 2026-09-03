@@ -15,7 +15,9 @@
         <%= f.check_box :verified, data: { action: "change->item-form#toggleLock" } %> Verified
       </label>
       <%= f.text_area :notes, placeholder: "Notes (optional)", rows: 3, class: ds_field %>
-      <%= f.submit "Save", class: "w-full #{ds_button(:primary)}" %>
+      <div class="flex justify-end">
+        <%= f.submit "Save", class: ds_button(:primary) %>
+      </div>
     <% end %>
 
     <div class="border-t border-gray-100 pt-3">

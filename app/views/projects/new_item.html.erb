@@ -8,7 +8,9 @@
         <%= f.text_field :name, placeholder: "e.g. Go Live", required: true, class: ds_field %>
         <%= f.date_field :date, required: true, class: ds_field %>
         <%= f.text_area :notes, placeholder: "Notes (optional)", rows: 2, class: ds_field %>
-        <%= f.submit "Add milestone", class: "w-full #{ds_button(:milestone)}" %>
+        <div class="flex justify-end">
+          <%= f.submit "Add milestone", class: ds_button(:milestone) %>
+        </div>
       <% end %>
     </div>
 
@@ -20,7 +22,9 @@
         <%= render "tasks/sprint_picker", f: f, sprints: @sprints, locked: false %>
         <p class="text-xs text-gray-400">Dates defaulted to the current sprint — adjust if needed.</p>
         <%= f.text_area :notes, placeholder: "Notes (optional)", rows: 2, class: ds_field %>
-        <%= f.submit "Add task", class: "w-full #{ds_button(:task)}" %>
+        <div class="flex justify-end">
+          <%= f.submit "Add task", class: ds_button(:task) %>
+        </div>
       <% end %>
     </div>
   </div>
