@@ -5,6 +5,8 @@ class ApplicationController < ActionController::Base
   # Changes to the importmap will invalidate the etag for HTML responses
   stale_when_importmap_changes
 
+  before_action :require_authentication
+
   # An empty form submission shouldn't dump a 400 error page on the user.
   rescue_from ActionController::ParameterMissing do
     redirect_to root_path, alert: "Nothing was submitted — fill the form in and try again."
@@ -12,5 +14,11 @@ class ApplicationController < ActionController::Base
 
   rescue_from ActiveRecord::RecordNotFound do
     redirect_to root_path, alert: "That item no longer exists."
+  end
+
+  private
+
+  def require_authentication
+    redirect_to login_path unless session[:authenticated]
   end
 end

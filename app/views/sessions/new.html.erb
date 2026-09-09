@@ -1,0 +1,17 @@
+<div class="min-h-screen flex items-center justify-center bg-gray-100 px-4">
+  <div class="w-full max-w-sm bg-white border border-gray-200 rounded-lg shadow-sm p-6 space-y-4">
+    <h1 class="text-base font-semibold text-gray-900">Projects Planning</h1>
+
+    <% if flash[:alert] %>
+      <p class="<%= ds_alert(:error) %>"><%= flash[:alert] %></p>
+    <% end %>
+
+    <%= form_with url: login_path, method: :post, class: "space-y-2" do %>
+      <input type="email" name="email" placeholder="Email" required autofocus class="<%= ds_field %>">
+      <input type="password" name="password" placeholder="Password" required class="<%= ds_field %>">
+      <div class="flex justify-end pt-2">
+        <button type="submit" class="w-full <%= ds_button(:dark) %>">Sign in</button>
+      </div>
+    <% end %>
+  </div>
+</div>
