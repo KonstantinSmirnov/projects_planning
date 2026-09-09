@@ -33,6 +33,10 @@
 # Ignore key files for decrypting credentials and more.
 /config/*.key
 
+# Kamal deploy secrets — should only ever contain $VAR references, never raw
+# credentials, but keep it out of git as a safety net regardless.
+/.kamal/secrets
+
 
 /app/assets/builds/*
 !/app/assets/builds/.keep

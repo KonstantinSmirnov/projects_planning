@@ -1,0 +1,7 @@
+# Kamal uses Ruby's net-ssh, not the system ssh binary — its default cipher offer
+# (aes256-gcm@openssh.com) doesn't overlap with this server's sshd, which only advertises
+# 3des-cbc/aes128-cbc/aes128-ctr/aes256-ctr (an old or hardened sshd_config missing every modern
+# AEAD cipher). This forces the strongest cipher the server actually supports instead of failing
+# negotiation outright. Referenced from config/deploy.yml's ssh.config key.
+Host 85.143.172.248
+  Ciphers aes256-ctr,aes128-ctr

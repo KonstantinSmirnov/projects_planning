@@ -2,15 +2,15 @@
 service: projects_planning
 
 # Name of the container image (use your-user/app-name on external registries).
-image: projects_planning
+image: smiplay/projects_planning
 
 # Deploy to these servers.
 servers:
   web:
-    - 192.168.0.1
+    - 85.143.172.248
   # job:
   #   hosts:
-  #     - 192.168.0.1
+  #     - 85.143.172.248
   #   cmd: bin/jobs
 
 # Enable SSL auto certification via Let's Encrypt and allow for multiple apps on a single web server.
@@ -19,27 +19,24 @@ servers:
 # Using an SSL proxy like this requires turning on config.assume_ssl and config.force_ssl in production.rb!
 #
 # Don't use this when deploying to multiple web servers (then you have to terminate SSL at your load balancer).
-#
-# proxy:
-#   ssl: true
-#   host: app.example.com
+proxy:
+  ssl: true
+  host: planning.smi.design
 
 # Where you keep your container images.
 registry:
-  # Alternatives: hub.docker.com / registry.digitalocean.com / ghcr.io / ...
-  server: localhost:5555
-
-  # Needed for authenticated registries.
-  # username: your-user
+  # Docker Hub.
+  username: smiplay
 
   # Always use an access token rather than real password when possible.
-  # password:
-  #   - KAMAL_REGISTRY_PASSWORD
+  password:
+    - KAMAL_REGISTRY_PASSWORD
 
 # Inject ENV variables into containers (secrets come from .kamal/secrets).
 env:
   secret:
     - RAILS_MASTER_KEY
+    - PROJECTS_PLANNING_DATABASE_PASSWORD
   clear:
     # Run the Solid Queue Supervisor inside the web server's Puma process to do jobs.
     # When you start using multiple servers, you should split out job processing to a dedicated machine.
@@ -51,9 +48,9 @@ env:
     # Set number of cores available to the application on each server (default: 1).
     # WEB_CONCURRENCY: 2
 
-    # Match this to any external database server to configure Active Record correctly
-    # Use projects_planning-db for a db accessory server on same machine via local kamal docker network.
-    # DB_HOST: 192.168.0.2
+    # The db accessory below runs on the same machine, reachable via Kamal's
+    # local Docker network under this alias (service name + accessory name).
+    DB_HOST: projects_planning-db
 
     # Log everything from Rails
     # RAILS_LOG_LEVEL: debug
@@ -90,30 +87,25 @@ builder:
   #   - GITHUB_TOKEN
   #   - RAILS_MASTER_KEY
 
-# Use a different ssh user than root
-# ssh:
-#   user: app
+# .kamal/ssh_config forces a cipher the server's sshd actually supports — its default list doesn't
+# overlap with net-ssh's, which otherwise fails with "could not settle on encryption_client
+# algorithm" before ever reaching a command.
+ssh:
+  config: .kamal/ssh_config
 
 # Use accessory services (secrets come from .kamal/secrets).
-# accessories:
-#   db:
-#     image: mysql:8.0
-#     host: 192.168.0.2
-#     # Change to 3306 to expose port to the world instead of just local network.
-#     port: "127.0.0.1:3306:3306"
-#     env:
-#       clear:
-#         MYSQL_ROOT_HOST: '%'
-#       secret:
-#         - MYSQL_ROOT_PASSWORD
-#     files:
-#       - config/mysql/production.cnf:/etc/mysql/my.cnf
-#       - db/production.sql:/docker-entrypoint-initdb.d/setup.sql
-#     directories:
-#       - data:/var/lib/mysql
-#   redis:
-#     image: valkey/valkey:8
-#     host: 192.168.0.2
-#     port: 6379
-#     directories:
-#       - data:/data
+accessories:
+  db:
+    image: postgres:17
+    host: 85.143.172.248
+    # Bound to localhost only — reachable from the app container via the
+    # local Kamal Docker network, not exposed to the outside world.
+    port: "127.0.0.1:5432:5432"
+    env:
+      clear:
+        POSTGRES_USER: projects_planning
+        POSTGRES_DB: projects_planning_production
+      secret:
+        - POSTGRES_PASSWORD
+    directories:
+      - data:/var/lib/postgresql/data
